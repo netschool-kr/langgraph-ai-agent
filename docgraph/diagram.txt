@@ -1,0 +1,103 @@
+         ┌────────────────┐
+         │  split_pdf_node │
+         │ (SplitPDFFilesNode)
+         └───────┬────────┘
+                 │
+       (split_filepaths)
+                 │
+                 v
+         ┌─────────────────┐
+         │ working_queue_node│
+         │ (WorkingQueueNode)│
+         └───────┬─────────┘
+                 │
+     continue_parse(state):
+     ┌─────True────┐  ┌────False───┐
+     │              v               v
+     │     ┌────────────────┐  <<FINISHED>>
+     │     │document_parse_node│
+     │     │(DocumentParseNode)│
+     │     └───────┬─────────┘
+     │             │(metadata, raw_elements)
+     │             v
+     │    ┌─────────────────┐
+     │    │working_queue_node│
+     │    │ (재호출)         │
+     │    └───────┬─────────┘
+     │             │
+     └─────────────┘ (계속 반복, 모든 split_filepaths 처리)
+
+  모든 파일 파싱 완료 후:
+  state["working_filepath"] = "<<FINISHED>>"
+  continue_parse = False
+  이동:
+
+       ┌────────────────────┐
+       │post_document_parse_node│
+       │(PostDocumentParseNode)│
+       └─────────┬───────────┘
+                 │(elements_from_parser, total_cost)
+                 v
+          ┌──────────────────┐
+          │create_elements_node│
+          │(CreateElementsNode)│
+          └──────┬───────────┘
+                 │(elements)
+                 v
+        ┌───────────────────┐
+        │page_elements_extractor_node│
+        │(PageElementsExtractorNode) │
+        └─────────┬─────────┘
+                  │(texts_by_page, images_by_page, tables_by_page)
+                  v
+          ┌──────────────────────┐
+          │image_entity_extractor_node│
+          │(ImageEntityExtractorNode) │
+          └──────────┬───────────┘
+                     │(extracted_image_entities)
+                     v
+           ┌──────────────────────┐
+           │table_entity_extractor_node│
+           │(TableEntityExtractorNode) │
+           └──────────┬───────────┘
+                      │(extracted_table_entities)
+                      v
+              ┌──────────────┐
+              │merge_entity_node│
+              │(MergeEntityNode)│
+              └───────┬────────┘
+                      │(elements with entity)
+                      v
+           ┌───────────────────┐
+           │reconstruct_elements_node│
+           │(ReconstructElementsNode) │
+           └──────────┬───────────┘
+                      │(reconstructed_elements)
+                      v
+           ┌───────────────────┐
+           │langchain_document_node│
+           │(LangChainDocumentNode)│
+           └───────┬───────────┘
+                   │(documents)
+                   v
+          ┌───────────────────┐
+          │export_image        │
+          │(ExportImage)       │
+          └─────┬─────────────┘
+                │
+                v
+       ┌─────────────────────┐
+       │export_html           │
+       └─────┬──────────────┘
+             │
+             v
+       ┌─────────────────────┐
+       │export_markdown       │
+       └─────┬──────────────┘
+             │
+             v
+       ┌─────────────────────┐
+       │export_table_to_csv   │
+       └───────────┬─────────┘
+                   v
+                 (END)

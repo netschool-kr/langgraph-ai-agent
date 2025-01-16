@@ -1,0 +1,71 @@
+┌──────────────────────────────────┐
+│               main code           │
+│                                  │
+│  inputs: {"filepath": "data/test.pdf"} │
+│                                  │
+│  use_cache = True                 │
+└───────┬──────────────────────────┘
+        │
+        │ 1) Parser 실행 or 캐시 로드
+        v
+  ┌────────────────────────┐
+  │ parse_graph (Upstage)  │
+  │ (create_parse_graph)   │
+  │                       │
+  │ 내부적으로:           │
+  │ - SplitPDFFilesNode    │
+  │ - WorkingQueueNode      │
+  │ - DocumentParseNode     │
+  │ - WorkingQueueNode(반복) │
+  │ - PostDocumentParseNode │
+  │ - CreateElementsNode    │
+  │ - PageElementsExtractorNode
+  │ - ImageEntityExtractorNode
+  │ - TableEntityExtractorNode
+  │ - MergeEntityNode
+  │ - ReconstructElementsNode
+  │ - LangChainDocumentNode
+  └─────────┬─────────────┘
+            │(parsed_values)
+            v
+  캐시 => PARSER_CACHE_FILE
+
+       ┌───────────────────────────────────┐
+       │ main code                         │
+       │                                    │
+       │ 2) Translate 실행 or 캐시 로드    │
+       └───┬──────────────────────────────┘
+           │
+           v
+      ┌──────────────────────┐
+      │ translate_graph       │
+      │ (create_translate_graph) 
+      │                      │
+      │ 내부적으로 번역 노드   │
+      │ (LLMs.GPT4 기반)       │
+      └───────────┬─────────┘
+                  │(translate_values)
+                  v
+        캐시 => TRANSLATE_CACHE_FILE
+
+            ┌───────────────────────────────────┐
+            │ main code                         │
+            │                                   │
+            │ 3) Export 실행                    │
+            └──────┬───────────────────────────┘
+                   │
+                   v
+       ┌───────────────────────────┐
+       │ export_graph               │
+       │ (create_export_graph)      │
+       │                           │
+       │ 내부적으로:                │
+       │ - ExportImage              │
+       │ - ExportHTML               │
+       │ - ExportMarkdown           │
+       │ - ExportTableCSV           │
+       └───────────┬────────────────┘
+                   │(export_results)
+                   v
+                 출력 완료
+
